@@ -1,3 +1,16 @@
+diff --git a/packages/client/ui-brand/src/client/Seal.tsx b/packages/client/ui-brand/src/client/Seal.tsx
+index 7210434fdb..2ffafd0777 100644
+--- a/packages/client/ui-brand/src/client/Seal.tsx
++++ b/packages/client/ui-brand/src/client/Seal.tsx
+@@ -13,7 +13,7 @@ import { SEAL_GLYPH_LIN, SEAL_GLYPH_QI } from './glyphs.ts'
+ import { SEAL_BODY, SEAL_CELL, SEAL_RING, cellTransform } from './seal-geometry.ts'
+ 
+ /** Cinnabar body gradient, top to bottom: the seal's warm lit upper edge. */
+-const BODY_STOPS = ['#d4503d', '#c3402f', '#a23526'] as const
++const BODY_STOPS = ['#C94A40', '#B7352C', '#8F2A21'] as const
+ /** Warm white of the glyphs against the cinnabar body. */
+ const GLYPH_FILL = '#fff5eb'
+ /** Muted gold of the hairline ring. */
 diff --git a/packages/client/ui-theme-brand/src/client/tokens.ts b/packages/client/ui-theme-brand/src/client/tokens.ts
 index 8e09b6e62e..6a46270d4b 100644
 --- a/packages/client/ui-theme-brand/src/client/tokens.ts
