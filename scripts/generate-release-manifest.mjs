@@ -4,12 +4,15 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { basename, dirname } from 'node:path'
 
 /**
- * @param {{ lock: object, sync: { match: boolean, webBundleSha256: string }, checksums: string }} options
+ * @param {{ lock: object, sync: { match: boolean, webBundleSha256: string }, checksums: string, brand?: { sharedThemeVersion?: string } }} options
  * @returns {object} Release manifest for releases/manifest.json.
  */
-export function buildManifest({ lock, sync, checksums }) {
+export function buildManifest({ lock, sync, checksums, brand }) {
   if (!sync.match) throw new Error('release manifest: refusing to record a failed sync state')
   if (typeof sync.webBundleSha256 !== 'string') throw new Error('release manifest: sync report missing webBundleSha256')
+  if (typeof brand?.sharedThemeVersion !== 'string' || brand.sharedThemeVersion === '') {
+    throw new Error(`release manifest: brand manifest missing sharedThemeVersion, got ${JSON.stringify(brand?.sharedThemeVersion)}`)
+  }
   const artifacts = checksums.split('\n').filter(Boolean).map(line => line.split(/\s{2}/)[1])
   if (artifacts.length === 0) throw new Error('release manifest: checksums contain no artifacts')
   return {
@@ -18,20 +21,26 @@ export function buildManifest({ lock, sync, checksums }) {
     qilinVersion: lock.qilinVersion,
     qilinCommit: lock.qilinCommit,
     target: lock.target,
+    sharedThemeVersion: brand.sharedThemeVersion,
     sync: { webBundleSha256: sync.webBundleSha256 },
     artifacts,
   }
 }
 
 if (process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.argv[1]))) {
-  const [lockPath, syncPath, checksumsPath, outPath] = process.argv.slice(2)
+  const args = process.argv.slice(2)
+  const brandIndex = args.indexOf('--brand')
+  const brandPath = brandIndex === -1 ? undefined : args[brandIndex + 1]
+  const positional = args.filter((arg, index) => !arg.startsWith('--') && index !== brandIndex + 1)
+  const [lockPath, syncPath, checksumsPath, outPath] = positional
   if (!lockPath || !syncPath || !checksumsPath) {
-    throw new Error('usage: generate-release-manifest.mjs <lock.json> <sync-report.json> <checksums.txt> [manifestOut]')
+    throw new Error('usage: generate-release-manifest.mjs <lock.json> <sync-report.json> <checksums.txt> [manifestOut] [--brand <brand-manifest.json>]')
   }
   const manifest = buildManifest({
     lock: JSON.parse(await readFile(lockPath, 'utf8')),
     sync: JSON.parse(await readFile(syncPath, 'utf8')),
     checksums: await readFile(checksumsPath, 'utf8'),
+    brand: brandPath === undefined ? undefined : JSON.parse(await readFile(brandPath, 'utf8')),
   })
   const out = outPath ?? 'releases/manifest.json'
   await mkdir(dirname(out), { recursive: true })

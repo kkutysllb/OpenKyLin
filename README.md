@@ -27,7 +27,11 @@ npm run release:manifest -- <lock> <sync> <checksums> [manifestOut]
 
 1. 将授权 Logo 放入 `branding/logo/qilin.svg`。
 2. 用真实上游 40 位 commit 替换锁文件全零占位。
-3. 针对锁定 commit 生成 `patches/desktop-branding.patch` 并在 `patches/registry.json` 登记。
+3. 针对锁定 commit 依次生成三个品牌补丁，并确认与 `patches/registry.json` 登记一致：
+   - `patches/shared-web-branding.patch`（共享 Web Client 的中国文化主题/品牌文案，scope `packages/client`）；
+   - `patches/desktop-locale.patch`（桌面壳中文文案，scope `apps/desktop`）；
+   - `patches/desktop-branding.patch`（桌面壳品牌化：窗口标题/关于页/启动页视觉，scope `apps/desktop`）。
+   任一补丁缺失时 CI 在 Apply branding 步骤失败（设计上的 loud fail，不生成半品牌化产物）。
 4. 配置 `release` environment：
    - vars：`QILIN_DESKTOP_APP_ID`、`QILIN_DESKTOP_MACOS_SIGNING_IDENTITY`、`QILIN_DESKTOP_MACOS_TEAM_ID`、`OPENKYLIN_UPDATE_ORIGIN`（`https://github.com/<owner>/<repo>/releases/latest/download`）；
    - secrets：`APPLE_API_KEY_ID`、`APPLE_API_ISSUER`、`APPLE_API_KEY_PEM`（App Store Connect API 私钥，打包步写入临时 .p8）。
@@ -43,3 +47,8 @@ npm run release:manifest -- <lock> <sync> <checksums> [manifestOut]
 
 - 中国文化主题为共享 Web Client 注入（`branding/brand-manifest.json` + `branding/theme/tokens.css`），Web 与 Desktop 同源；Desktop 壳层（启动页/错误恢复/菜单）只做平台适配。
 - accent token（朱砂/玉青/鎏金）仅作点缀、大文本或状态图形用途；正文文本一律使用 ink/paper 对（对比度 ≥ 4.5，CI 强制）。
+
+## 跟进项
+
+- **双端同场景 e2e**：设计 §9.2 要求 Web 浏览器端与 Desktop 端跑同一组功能场景（新建会话、发送消息、流式响应、Session 切换、设置、错误提示与恢复重试）及文案/主题 Token 一致性检查；当前由构建物摘要门禁（webBundleSha256 全等）保证同源，场景级 e2e 需在首次真实构建可产出后补齐（拟复用上游 `apps/web/tests` fixture 形态）。
+- `verify-upstream` 默认路径改为模块相对定位；CLI 入口守卫改用 `pathToFileURL` 精确比较（累积审查 Nice-to-have）。

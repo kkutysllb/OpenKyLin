@@ -135,20 +135,22 @@ Web 与 Desktop 的工作区使用同一份 `@qilin/web-frontend/dist` 构建物
 
 ### 3.4 同步发布单元
 
-Web 与 Desktop 不拥有独立版本线。一个发布单元由以下事实组成：
+Web 与 Desktop 不拥有独立版本线。一个发布单元由 `releases/manifest.json` 记录以下事实：
 
 ```json
 {
+  "schemaVersion": 1,
+  "productVersion": "0.1.0",
+  "qilinVersion": "3.0.0",
   "qilinCommit": "0123456789abcdef0123456789abcdef01234567",
-  "webClientVersion": "3.0.0",
-  "webBundleSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "target": "mac-arm64",
   "sharedThemeVersion": "1",
-  "featureCatalogSha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
-  "desktopTarget": "mac-arm64"
+  "sync": { "webBundleSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" },
+  "artifacts": ["OpenKylin-Desktop-0.1.0-arm64.dmg"]
 }
 ```
 
-其中 `webBundleSha256` 必须由 Web 发布目录和 Desktop 运行时携带的同一目录分别计算并比对。`featureCatalogSha256` 用于检测功能注册表、路由和插件入口是否来自同一构建。Web 与 Desktop 任一事实不一致时，Release workflow 直接失败，不允许通过更改显示版本号掩盖漂移。
+其中 `webBundleSha256` 必须由 Web 发布目录和 Desktop 运行时携带的同一目录（`node_modules/@qilin/web-frontend/dist`）分别计算并比对；比对排除 `.map` 与 `preview` 产物（两侧按同一谓词），与上游打包过滤规则对应。设计初稿中的 `featureCatalogSha256` 被合并取消：功能注册表、路由和插件入口都在该构建物内，`webBundleSha256` 全等已经蕴含功能一致性，独立摘要属于冗余（见关键决策记录）。Web 与 Desktop 任一事实不一致时，Release workflow 直接失败，不允许通过更改显示版本号掩盖漂移。
 
 同步优先级如下：
 
@@ -510,3 +512,4 @@ QiLin Agent / Plugin / Session 运行
 - 选择 GitHub Release 保存安装包，Git 仓库保存清单，以避免二进制膨胀并保留可审计的发布历史。
 - 选择“现代桌面工具 + 中国文化细节”，而不是完整古风皮肤，以保证效率、可读性和桌面使用连续性。
 - 选择 Web Client 作为工作区唯一实现，Desktop 只复用其构建物并提供原生壳层；以资源摘要、功能目录摘要和双端同场景测试阻止后续同步漂移。
+- 实施期修订：取消独立的 `featureCatalogSha256`——功能注册表、路由与插件入口均包含在 Web Client 构建物内，`webBundleSha256` 双端全等已蕴含功能一致性；`sharedThemeVersion` 改为从 `branding/brand-manifest.json` 记录进发布清单，用于追溯注入主题的版本。

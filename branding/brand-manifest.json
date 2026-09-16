@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "sharedThemeVersion": "1",
   "productName": "OpenKylin Desktop",
   "displayName": "QiLin Desktop",
   "subtitle": "基于 QiLin 构建的中文桌面智能工作台",

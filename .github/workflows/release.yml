@@ -64,7 +64,7 @@ jobs:
             checksums-sha256.txt
           node scripts/generate-release-manifest.mjs \
             upstream/qilin.lock.json sync-report.json checksums-sha256.txt \
-            releases/manifest.json
+            releases/manifest.json --brand branding/brand-manifest.json
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:

@@ -25,6 +25,9 @@ export function contrastRatio(foreground, background) {
 export function parseBrandManifest(value) {
   if (typeof value !== 'object' || value === null) throw new Error('brand manifest: not an object')
   if (value.schemaVersion !== 1) throw new Error('brand manifest: unsupported schemaVersion')
+  if (typeof value.sharedThemeVersion !== 'string' || value.sharedThemeVersion === '') {
+    throw new Error(`brand manifest: sharedThemeVersion required, got ${JSON.stringify(value.sharedThemeVersion)}`)
+  }
   for (const field of ['productName', 'displayName', 'subtitle', 'trademarkNotice']) {
     if (typeof value[field] !== 'string' || value[field] === '') throw new Error(`brand manifest: ${field} required`)
   }

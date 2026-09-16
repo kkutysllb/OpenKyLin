@@ -10,6 +10,12 @@ test('品牌清单通过 schema 与对比度校验', () => {
   assert.deepEqual(parseBrandManifest(manifest), manifest)
 })
 
+test('sharedThemeVersion 必须存在', () => {
+  assert.equal(manifest.sharedThemeVersion, '1')
+  assert.throws(() => parseBrandManifest({ ...manifest, sharedThemeVersion: '' }), /sharedThemeVersion/)
+  assert.throws(() => parseBrandManifest({ ...manifest, sharedThemeVersion: undefined }), /sharedThemeVersion/)
+})
+
 test('contrastRatio 满足 WCAG 数学', () => {
   assert.equal(Math.round(contrastRatio('#000000', '#ffffff')), 21)
   assert.throws(() => contrastRatio('#000000', '#000000'), /contrast/)
