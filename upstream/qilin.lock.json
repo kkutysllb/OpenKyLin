@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "productVersion": "0.1.0",
+  "qilinRepository": "https://github.com/deepseek-ai/deepseek-harness.git",
+  "qilinCommit": "0000000000000000000000000000000000000000",
+  "qilinVersion": "3.0.0",
+  "nodeVersion": "24.17.0",
+  "pnpmVersion": "11.7.0",
+  "target": "mac-arm64"
+}
