@@ -14,6 +14,7 @@ QiLin 商标及 Logo 归其权利人所有；本发行版由 OpenKylin 维护。
 
 ```sh
 npm test                          # 全部产品层测试（Node 原生 runner）
+npm run dev                       # 启动品牌化桌面开发环境（见下节）
 npm run verify:upstream           # 校验上游锁
 npm run verify:branding           # 校验品牌清单与对比度
 npm run fetch:upstream -- <repo> <commit> <version> <out>
@@ -22,6 +23,48 @@ npm run verify:sync -- <webDist> <desktopDist> [report.json]
 npm run verify:artifact -- <desktop-runtime.json> <lock> <artifactDir> [checksumsOut]
 npm run release:manifest -- <lock> <sync> <checksums> [manifestOut]
 ```
+
+## 桌面开发环境（KCoder host & sidecar 机制）
+
+`npm run dev` 参考 KCoder（DSH Desktop）的实现机制，把桌面端做成 qilin web
+侧车的**宿主**，而不是另一套工作区实现：
+
+```
+OpenKylin Desktop（Electron 壳，desktop/ 目录，零 npm 依赖）
+  ├─ 中文品牌启动页（splash，本地资源，不依赖侧车；失败态有重试/复制诊断）
+  ├─ spawn  node apps/cli/lib/bin.js --port 0 --no-open   （品牌化侧车，产品面）
+  ├─ stdout 就绪行 qilin: http://127.0.0.1:<port>/workspace?token=…
+  └─ shell 窗口 loadURL 上述地址 —— 与浏览器访问 web 端是同一个 server、
+     同一份 Web Client 构建物、同一套主题与数据（$QILIN_HOME）
+```
+
+侧车启动的是上游**产品面**（裸 `qilin`，shipped profile `qilin` = base +
+web-app + web-brand），而非 unbranded 的 `qilin web` 面：web-brand 层把
+麒麟印章品牌位与宣纸/墨色主题层（`ui-brand` + `ui-theme-brand`）插入浏览
+器模块清单——这是上游原生的产品视觉，`shared-web-branding.patch` 再把印
+章渐变与印章色 token 统一到 OpenKylin 朱砂（`#B7352C`/`#C94A40`）。桌面
+工作区与上游 QiLin 的 web 端因此**按构造完全一致**：shell 窗口是侧车的纯
+浏览器载体（sandbox、无 preload、无任何注入），QiLin 升级自动跟随。安全
+边界：导航只允许停留在当前侧车 origin，外链转系统浏览器，权限请求一律
+拒绝；进程纪律：侧车崩溃指数退避重启（上限 3 次），退出走 SIGTERM → 5s
+宽限 → SIGKILL，另有 detached watchdog 兜底——即使主进程被 `kill -9`
+也不留孤儿侧车。
+
+dev 脚本按 stamp 复用 `.tmp/dev/qilin-src`（锁 commit + 品牌输入指纹匹
+配时不重建，保住 node_modules 与构建产物）；侧车构建物（CLI bin 与 Web
+dist）缺失时自动经上游工具链补建（`CI=true pnpm install → build:qilin`，
+后者是绑定客户端公共环境的上游产品构建：版本徽章、commit 与构建 profile
+随产物烘焙）；Electron 二进制取自品牌化 checkout（与上游同版本，下载缺
+失时自动执行 electron install.js 补装）。上游
+契约（就绪行、flags、bin 路径、home）集中在
+`desktop/main/qilin-contract.mjs`，升级上游只改这一个文件。
+
+受限执行环境（CI 容器、嵌套沙箱）可用的逃生口，普通终端无需设置：
+`OPENKYLIN_USER_DATA`（重定向 Electron userData）、`QILIN_HOME`（重定向
+harness home）、`ELECTRON_DISABLE_SANDBOX`（绕过外层沙箱对 Chromium OS
+sandbox 的干扰）、`OPENKYLIN_ELECTRON_NO_GPU=1`（无头/CPU-only runner 追加
+`--disable-gpu`）、`OPENKYLIN_ELECTRON_ARGS`（追加任意 Electron 开关，空白
+分隔）、`OPENKYLIN_QILIN_RUN`（显式指定品牌化运行树）。
 
 ## 首次发布前置（人工）
 
