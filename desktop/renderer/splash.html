@@ -1,0 +1,194 @@
+<!doctype html>
+<!-- desktop/renderer/splash.html
+  OpenKylin Desktop 中文品牌启动页（本地资源，不依赖 qilin 侧车）。
+
+  视觉遵循 branding/theme/tokens.css 的共享主题 Token：宣纸/墨黑为底，
+  朱砂仅用于进度与主动作，玉青作品牌副色（对比度 ≥ 4.5 由 CI 对
+  brand-manifest 强制）。授权 Logo（branding/logo/qilin.svg）尚未就位，
+  标识先用玉璧形几何圆环占位——logo 文件落地后由品牌链替换。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'self' data:">
+  <title>QiLin Desktop</title>
+  <style>
+    :root {
+      --ok-paper: #F7F3EA;
+      --ok-ink: #17191C;
+      --ok-cinnabar: #B7352C;
+      --ok-jade: #5D8275;
+      --ok-gold: #B89152;
+      --ok-ink-60: rgba(23, 25, 28, 0.6);
+      --ok-ink-12: rgba(23, 25, 28, 0.12);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ok-paper: #17191C;
+        --ok-ink: #F7F3EA;
+        --ok-cinnabar: #C94A40;
+        --ok-jade: #83A99A;
+        --ok-gold: #D0AA67;
+        --ok-ink-60: rgba(247, 243, 234, 0.62);
+        --ok-ink-12: rgba(247, 243, 234, 0.14);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--ok-paper);
+      color: var(--ok-ink);
+      font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+    main {
+      width: min(420px, 86vw);
+      text-align: center;
+    }
+    /* 玉璧形标识：双环 + 朱砂璧好（授权 Logo 就位前的几何占位） */
+    .bi {
+      width: 84px;
+      height: 84px;
+      margin: 0 auto 28px;
+      border-radius: 50%;
+      border: 2px solid var(--ok-jade);
+      outline: 1px solid var(--ok-ink-12);
+      outline-offset: 5px;
+      position: relative;
+    }
+    .bi::after {
+      content: "";
+      position: absolute;
+      right: 6px;
+      bottom: 10px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--ok-cinnabar);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+    }
+    .subtitle { margin: 0; font-size: 13px; color: var(--ok-ink-60); }
+    .spinner {
+      width: 34px;
+      height: 34px;
+      margin: 34px auto 0;
+      border-radius: 50%;
+      border: 3px solid var(--ok-ink-12);
+      border-top-color: var(--ok-cinnabar);
+      animation: ok-spin 0.9s linear infinite;
+    }
+    @keyframes ok-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .spinner { animation-duration: 2.4s; }
+    }
+    /* 失败恢复态 */
+    .error-box { display: none; margin-top: 30px; text-align: left; }
+    body[data-state="failed"] .spinner { display: none; }
+    body[data-state="failed"] .subtitle { display: none; }
+    body[data-state="failed"] .error-box { display: block; }
+    .error-text {
+      margin: 0 0 18px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--ok-ink);
+      background: var(--ok-ink-12);
+      border-radius: 8px;
+      max-height: 150px;
+      overflow: auto;
+      user-select: text;
+    }
+    .actions { display: flex; gap: 12px; justify-content: center; }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 22px;
+      font-size: 13px;
+      cursor: pointer;
+      background: var(--ok-cinnabar);
+      color: #F7F3EA;
+    }
+    button.secondary {
+      background: transparent;
+      color: inherit;
+      border: 1px solid var(--ok-ink-12);
+    }
+    button:focus-visible { outline: 2px solid var(--ok-cinnabar); outline-offset: 2px; }
+    footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 22px;
+      font-size: 11px;
+      color: var(--ok-ink-60);
+      text-align: center;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body data-state="starting">
+  <main aria-busy="true">
+    <div class="bi" aria-hidden="true"></div>
+    <h1 id="title">云门正在开启</h1>
+    <p class="subtitle" id="subtitle">正在准备你的工作区……</p>
+    <div class="spinner" role="progressbar" aria-label="启动进度"></div>
+    <div class="error-box">
+      <pre class="error-text" id="error-text"></pre>
+      <div class="actions">
+        <button id="retry" type="button">重试启动</button>
+        <button id="copy" type="button" class="secondary">复制诊断信息</button>
+      </div>
+    </div>
+  </main>
+  <footer>
+    QiLin Desktop · 基于 QiLin 构建<br>
+    QiLin 商标及 Logo 归其权利人所有；本发行版由 OpenKylin 维护
+  </footer>
+  <script>
+    'use strict'
+    const title = document.getElementById('title')
+    const subtitle = document.getElementById('subtitle')
+    const errorText = document.getElementById('error-text')
+    const copyButton = document.getElementById('copy')
+
+    function render(status) {
+      document.body.dataset.state = status.state
+      if (status.state === 'restarting') {
+        title.textContent = '云门正在重新开启'
+        subtitle.textContent = '正在恢复你的工作区……'
+      } else {
+        title.textContent = '云门正在开启'
+        subtitle.textContent = '正在准备你的工作区……'
+      }
+      if (status.state === 'failed' && status.error !== null) {
+        errorText.textContent = status.error
+      }
+    }
+
+    document.getElementById('retry').addEventListener('click', () => {
+      window.openkylin.retry()
+    })
+    copyButton.addEventListener('click', async () => {
+      await window.openkylin.copyDiagnostics()
+      copyButton.textContent = '已复制'
+      setTimeout(() => { copyButton.textContent = '复制诊断信息' }, 1600)
+    })
+
+    window.openkylin.onState(render)
+  </script>
+</body>
+</html>
