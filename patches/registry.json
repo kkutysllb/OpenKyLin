@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "overwrites": [
+    {
+      "source": "branding/theme/tokens.css",
+      "target": "apps/desktop/renderer/ok-theme.css",
+      "expectSha256": null
+    }
+  ],
+  "patches": [
+    { "patch": "patches/desktop-branding.patch", "scope": "apps/desktop" }
+  ]
+}
