@@ -42,3 +42,14 @@ test('dirDigest exclude 命中文件被跳过；无 exclude 行为不变', async
     await rm(b, { recursive: true, force: true })
   }
 })
+
+test('dirDigest 拒绝带 /g 标志的 exclude 模式（lastIndex 陷阱）', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ok-hash-g-'))
+  try {
+    await writeFile(join(root, 'one.map'), '1')
+    await writeFile(join(root, 'two.map'), '2')
+    await assert.rejects(dirDigest(root, { exclude: [/\.map$/g] }), /not allowed/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

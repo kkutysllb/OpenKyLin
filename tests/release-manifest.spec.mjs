@@ -23,3 +23,16 @@ test('同步失败时拒绝生成', () => {
     checksums: '',
   }), /refusing to record/)
 })
+
+test('空产物清单与缺摘要的同步报告被拒绝', () => {
+  assert.throws(() => buildManifest({
+    lock: { productVersion: '0.1.0', qilinVersion: '3.0.0', qilinCommit: 'a'.repeat(40), target: 'mac-arm64' },
+    sync: { match: true, webBundleSha256: 'b'.repeat(64) },
+    checksums: '\n\n',
+  }), /no artifacts/)
+  assert.throws(() => buildManifest({
+    lock: { productVersion: '0.1.0', qilinVersion: '3.0.0', qilinCommit: 'a'.repeat(40), target: 'mac-arm64' },
+    sync: { match: true },
+    checksums: 'x'.repeat(64) + '  app.dmg',
+  }), /webBundleSha256/)
+})

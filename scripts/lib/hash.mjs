@@ -29,6 +29,9 @@ export async function sha256File(path) {
  * @param {{ exclude?: readonly RegExp[] }} [options]
  */
 export async function dirDigest(root, { exclude = [] } = {}) {
+  for (const pattern of exclude) {
+    if (pattern.global) throw new Error(`dirDigest exclude: /g patterns are not allowed (${pattern})`)
+  }
   const entries = []
   async function walk(dir) {
     for (const name of (await readdir(dir)).sort()) {

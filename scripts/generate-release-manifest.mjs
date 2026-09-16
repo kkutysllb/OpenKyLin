@@ -9,7 +9,9 @@ import { basename, dirname } from 'node:path'
  */
 export function buildManifest({ lock, sync, checksums }) {
   if (!sync.match) throw new Error('release manifest: refusing to record a failed sync state')
+  if (typeof sync.webBundleSha256 !== 'string') throw new Error('release manifest: sync report missing webBundleSha256')
   const artifacts = checksums.split('\n').filter(Boolean).map(line => line.split(/\s{2}/)[1])
+  if (artifacts.length === 0) throw new Error('release manifest: checksums contain no artifacts')
   return {
     schemaVersion: 1,
     productVersion: lock.productVersion,
