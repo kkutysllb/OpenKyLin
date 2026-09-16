@@ -7,3 +7,4 @@ dist/
 *.tgz
 /sync-report.json
 /checksums-sha256.txt
+.pnpm-store/

@@ -1,0 +1,30 @@
+diff --git a/apps/desktop/src/locale.ts b/apps/desktop/src/locale.ts
+index 029c7efff1..12eb58294c 100644
+--- a/apps/desktop/src/locale.ts
++++ b/apps/desktop/src/locale.ts
+@@ -57,7 +57,7 @@ export type DesktopMessages = { readonly [Key in keyof typeof en]: string }
+ export const zh = {
+   application: '应用',
+   startupFailed: 'QiLin 无法启动',
+-  startupLoading: '正在启动 QiLin…',
++  startupLoading: '云门正在开启',
+   startupLoadingDescription: '准备就绪后将自动打开工作区。',
+   startupErrorDescription: '请选择下方的恢复操作。禁用第三方插件会保留插件文件。',
+   startupReinstallAdvice: '如果应用文件缺失或损坏，请关闭应用并重新安装。任务数据存储在独立位置。',
+@@ -72,14 +72,14 @@ export const zh = {
+   unknownError: '未知错误',
+   updateCheckTitle: '检查更新',
+   updateCurrent: '当前已是最新版本。',
+-  updateTitle: 'QiLin 更新',
++  updateTitle: 'QiLin Desktop 更新',
+   updateAvailable: '发现可用更新',
+   updateDetail: 'QiLin {version}\n\n新版本绑定匹配的 qilin，安装后将重新启动。',
+   installAndRestart: '安装并重启',
+   later: '稍后',
+   updateFailedTitle: '更新失败',
+   pluginManagerTitle: '桌面插件',
+-  pluginWindowTitle: 'QiLin — 桌面插件',
++  pluginWindowTitle: 'QiLin Desktop — 桌面插件',
+   pluginManagerDescription: '插件只安装到桌面端自己的 node_modules，并由内置 pnpm 管理。',
+   refresh: '刷新',
+   enable: '启用',

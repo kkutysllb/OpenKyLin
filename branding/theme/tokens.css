@@ -15,3 +15,15 @@
     --ok-gold: #D0AA67;
   }
 }
+
+/* Desktop startup page skin (ok-theme.css, loaded after startup.css). */
+body { background: var(--ok-paper); color: var(--ok-ink); }
+#spinner { border-color: rgba(23, 25, 28, 0.12); border-top-color: var(--ok-cinnabar); }
+button { background: var(--ok-cinnabar); }
+button.secondary { color: inherit; background: transparent; border-color: rgba(23, 25, 28, 0.25); }
+button:focus-visible { outline-color: var(--ok-cinnabar); }
+#startup-brand { margin-top: 18px; font-size: 12px; color: var(--ok-jade); }
+@media (prefers-color-scheme: dark) {
+  #spinner { border-color: rgba(247, 243, 234, 0.14); border-top-color: var(--ok-cinnabar); }
+  button.secondary { border-color: rgba(247, 243, 234, 0.3); }
+}

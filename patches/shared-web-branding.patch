@@ -1,0 +1,11 @@
+diff --git a/packages/client/ui-theme-brand/src/client/tokens.ts b/packages/client/ui-theme-brand/src/client/tokens.ts
+index 8e09b6e62e..6a46270d4b 100644
+--- a/packages/client/ui-theme-brand/src/client/tokens.ts
++++ b/packages/client/ui-theme-brand/src/client/tokens.ts
+@@ -118,5 +118,5 @@ export const QILIN_TOKENS: ThemeTokenOverrides = Object.freeze({
+      on light surfaces and the lit upper stop on dark ones, so the label
+      clears 4.5:1 against both the light sidebar #f1ece0 and the dark
+      #0d0b09. Changing the seal gradient means changing this token with it. */
+-  '--dsw-specific-brand-seal-fill': { light: '#c3402f', dark: '#d4503d' },
++  '--dsw-specific-brand-seal-fill': { light: '#B7352C', dark: '#C94A40' },
+ })

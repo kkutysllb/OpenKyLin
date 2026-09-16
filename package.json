@@ -5,6 +5,7 @@
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
+    "dev": "node scripts/dev.mjs",
     "test": "node --test \"tests/**/*.spec.mjs\"",
     "verify:upstream": "node scripts/verify-upstream.mjs",
     "verify:branding": "node scripts/verify-branding.mjs",
