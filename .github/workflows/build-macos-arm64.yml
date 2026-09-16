@@ -35,5 +35,16 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm run build
-      - name: Source leakage scan of build residue
-        run: node scripts/check-source-leakage.mjs "$RUNNER_TEMP/qilin-src/apps/web/dist"
+      - name: Desktop payload parity (web-frontend tarball vs web dist)
+        working-directory: ${{ runner.temp }}/qilin-src
+        run: |
+          mkdir -p .openkylin-pack
+          pnpm --dir apps/web pack --pack-destination .openkylin-pack
+          tar -xzf .openkylin-pack/qilin-web-frontend-*.tgz -C .openkylin-pack
+          node "$GITHUB_WORKSPACE/scripts/verify-web-desktop-sync.mjs" \
+            "$PWD/apps/web/dist" \
+            "$PWD/.openkylin-pack/package/dist"
+      - name: Source leakage scan of shipped bundles
+        run: |
+          node scripts/check-source-leakage.mjs "$RUNNER_TEMP/qilin-src/apps/web/dist"
+          node scripts/check-source-leakage.mjs "$RUNNER_TEMP/qilin-src/.openkylin-pack/package"

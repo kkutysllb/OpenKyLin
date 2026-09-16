@@ -42,6 +42,8 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm run build
           pnpm run package:desktop:mac:arm64
+      - name: Source leakage scan of desktop runtime payload
+        run: node scripts/check-source-leakage.mjs "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/qilin"
       - name: Web/Desktop sync gate
         run: |
           node scripts/verify-web-desktop-sync.mjs \
