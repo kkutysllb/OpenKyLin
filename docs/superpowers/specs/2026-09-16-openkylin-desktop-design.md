@@ -1,10 +1,11 @@
 # OpenKylin 桌面端设计
 
 - 日期：2026-09-16
-- 状态：已确认设计
+- 状态：已修订，待复审
 - 首发平台：macOS Apple Silicon（arm64）
 - 产品形态：基于 QiLin 构建的中文桌面智能工作台
 - 交付策略：上游源码临时构建，下游产品化，GitHub Release 发布构建物
+- 一致性原则：Web 与 Desktop 使用同一版本、同一份 Web Client 构建物和同一套产品主题
 
 ## 1. 目标与约束
 
@@ -13,6 +14,8 @@
 OpenKylin 提供一个面向 macOS Apple Silicon 的桌面应用，复用 QiLin 已有 Electron Desktop Shell、Desktop Host、Web Client、插件管理、运行时隔离和自动更新能力，同时加入中文产品体验和具有中国文化辨识度的视觉系统。
 
 首版重点是让用户像使用原生桌面应用一样运行 QiLin Web 工作区：启动时有本地加载页，运行时不开放 Web 监听端口，工作区、会话、插件和更新功能保持上游能力。
+
+Web 与 Desktop 的工作区必须保持功能和样式一致。Web 是用户工作区的单一产品实现，Desktop 只提供原生窗口、启动、更新和受控系统能力，不维护第二套聊天、Session、工具、设置或主题实现。中国文化视觉主题必须注入共享 Web Client，并由桌面壳复用同一套 Token；不能只在 Desktop 单独覆盖。
 
 ### 1.2 硬约束
 
@@ -23,11 +26,14 @@ OpenKylin 提供一个面向 macOS Apple Silicon 的桌面应用，复用 QiLin 
 5. 安装包、ZIP 和 DMG 进入 GitHub Release，不长期提交到 Git 历史。
 6. QiLin Logo 按已确认的授权范围使用，并保留商标归属说明。
 7. 首版不重新实现 QiLin Host 协议或 Session 持久化格式。
+8. Web 与 Desktop 的用户工作区必须由同一份 Web Client 构建物提供；禁止维护 Desktop 专属 Web UI 分支。
+9. 每次上游升级必须同时构建和验证 Web、Desktop 两个交付面；任一同步检查失败都不得发布。
 
 ### 1.3 非目标
 
 - 首版不支持 Linux 或 Windows 发布。
 - 首版不重写 QiLin 主工作区的交互模型。
+- 首版不维护 Desktop 专属的 Web Client、组件样式或功能分支。
 - 首版不将 QiLin 源码复制到 OpenKylin 的 Git 子目录、Git submodule 或 vendored 目录。
 - 首版不维护独立于上游的 Host 协议、核心插件体系或 Session 格式。
 - 首版不加入开机启动、全局快捷键、文件关联、系统级常驻服务等深度系统集成能力。
@@ -43,8 +49,8 @@ OpenKylin 产品仓库
   ├─ 读取 upstream/qilin.lock.json
   ├─ 拉取临时 QiLin 源码
   ├─ 校验 commit、版本和依赖
-  ├─ 应用品牌资源与最小桌面补丁
-  ├─ 调用上游 Desktop 构建命令
+  ├─ 应用共享 Web 品牌主题与最小桌面壳层补丁
+  ├─ 调用上游 Web/Desktop 构建命令
   ├─ 签名、公证、运行时和泄漏检查
   └─ 发布 DMG、ZIP、SHA-256、SBOM 和清单
 ```
@@ -92,7 +98,8 @@ OpenKylin Desktop
 - `desktop-runtime.json` 运行时身份与文件完整性；
 - macOS arm64 打包、签名、公证和更新元数据；
 - `electron-updater` 更新流程；
-- 启动失败后的重试、禁用插件和重置配置恢复操作。
+- 启动失败后的重试、禁用插件和重置配置恢复操作；
+- `apps/web` 生成的 `@qilin/web-frontend/dist` Web Client 构建物；Desktop Host 通过同一包的 `dist/index.html` 提供工作区资源。
 
 ### 3.2 版本绑定
 
@@ -112,6 +119,43 @@ OpenKylin Desktop
 ```
 
 实际发布时，`productVersion`、上游包版本、Desktop Host 版本、内置 Node 版本、pnpm 版本和目标架构必须通过构建检查彼此一致。禁止使用浮动分支、`latest` 标签或未锁定的依赖解析结果。
+
+### 3.3 Web 与 Desktop 同源同步
+
+Web 与 Desktop 的工作区使用同一份 `@qilin/web-frontend/dist` 构建物，不允许分别维护两套前端代码或分别打包两份可能不同的 UI。同步规则如下：
+
+1. CI 在临时 QiLin 工作树中先构建一次 `@qilin/web-frontend`，生成 canonical Web Client 目录和内容摘要。
+2. Web 交付面由 `qilin web` 提供该构建物；Desktop 运行时由 `@qilin/desktop-host` 的 `assetHandler` 读取同一构建物中的 `dist/index.html` 和静态资源。
+3. Desktop 只在运行时向 HTML 注入桌面传输脚本和必要的协议适配，不修改 React 组件、CSS、路由、文案目录或功能注册表。
+4. 中国文化主题、品牌色、共享 Logo 使用规则和中文产品文案必须进入共享 Web Client 或上游已有的 `@qilin/client-ui-theme` / `@qilin/client-ui-theme-brand` 注入点，不能只覆盖 `apps/desktop/renderer`。
+5. 构建清单记录 `webClientVersion`、`webBundleSha256`、共享主题版本和功能目录摘要；Web 目录与 Desktop 运行时资源的摘要不一致时，构建失败。
+6. 每个上游升级同时执行 Web 浏览器端和 Desktop 端的同一组功能场景测试，并执行关键页面的结构、主题 Token 和可见文案一致性检查。
+
+允许存在的 Desktop 专属界面仅限于原生窗口生命周期相关内容：启动页、Host 错误恢复、原生菜单、系统更新确认和插件事务恢复页。这些界面不能替代 Web 工作区已有功能，也不能产生与 Web 工作区相冲突的主题或交互规则。
+
+### 3.4 同步发布单元
+
+Web 与 Desktop 不拥有独立版本线。一个发布单元由以下事实组成：
+
+```json
+{
+  "qilinCommit": "0123456789abcdef0123456789abcdef01234567",
+  "webClientVersion": "3.0.0",
+  "webBundleSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "sharedThemeVersion": "1",
+  "featureCatalogSha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+  "desktopTarget": "mac-arm64"
+}
+```
+
+其中 `webBundleSha256` 必须由 Web 发布目录和 Desktop 运行时携带的同一目录分别计算并比对。`featureCatalogSha256` 用于检测功能注册表、路由和插件入口是否来自同一构建。Web 与 Desktop 任一事实不一致时，Release workflow 直接失败，不允许通过更改显示版本号掩盖漂移。
+
+同步优先级如下：
+
+1. 功能实现和主题实现只存在于上游共享 Web Client；
+2. Web 交付和 Desktop 内嵌 Web 交付使用同一构建目录；
+3. 平台差异只允许出现在传输适配、文件/目录选择、窗口、菜单、更新和启动恢复；
+4. 任何需要同时改变 Web 和 Desktop 工作区的需求，先修改共享 Web Client，再由两个交付面共同验收。
 
 ## 4. OpenKylin 仓库布局
 
@@ -139,12 +183,14 @@ OpenKylin/
 │   └── trademarks/
 │       └── NOTICE.zh-CN.md
 ├── patches/
+│   ├── shared-web-branding.patch
 │   ├── desktop-branding.patch
 │   └── desktop-locale.patch
 ├── scripts/
 │   ├── fetch-upstream.mjs
 │   ├── verify-upstream.mjs
 │   ├── apply-branding.mjs
+│   ├── verify-web-desktop-sync.mjs
 │   ├── build-desktop.mjs
 │   ├── verify-artifact.mjs
 │   └── generate-release-manifest.mjs
@@ -152,6 +198,7 @@ OpenKylin/
 │   ├── brand-manifest.spec.ts
 │   ├── upstream-lock.spec.ts
 │   ├── patch-compatibility.spec.ts
+│   ├── web-desktop-sync.spec.ts
 │   ├── artifact-verifier.spec.ts
 │   └── source-leakage.spec.ts
 ├── .github/
@@ -178,11 +225,17 @@ OpenKylin/
   ↓
 安装冻结依赖
   ↓
+构建唯一的 @qilin/web-frontend/dist
+  ↓
 运行上游构建和 Desktop Host 构建
   ↓
-应用 brand-manifest、资源覆盖和最小 Patch
+将同一 Web 构建物接入 Web 与 Desktop
   ↓
-运行 patch 后测试
+分别计算 Web 目录、Desktop 运行时资源和功能目录摘要
+  ↓
+应用共享品牌资源、主题注入和最小壳层 Patch
+  ↓
+运行 Web/Desktop 同步测试
   ↓
 执行 package:desktop:mac:arm64
   ↓
@@ -203,9 +256,10 @@ OpenKylin/
 2. CI 拉取新的精确 QiLin commit。
 3. 校验上游版本、Node/pnpm 版本和依赖锁定状态。
 4. 应用品牌资源和 Patch；目标文件的预期 SHA 不匹配时立即失败。
-5. 运行产品层测试、上游 Desktop smoke test 和 macOS arm64 打包验证。
-6. 对新安装包执行签名、公证、启动和更新测试。
-7. 完成人工验收后合并锁文件 PR，并创建对应的 OpenKylin 发布版本。
+5. 运行 Web 浏览器端与 Desktop 端相同的功能场景、主题 Token、可见文案和资源摘要同步测试。
+6. 运行产品层测试、上游 Desktop smoke test 和 macOS arm64 打包验证。
+7. 对新安装包执行签名、公证、启动和更新测试。
+8. 完成人工验收后合并锁文件 PR，并创建对应的 OpenKylin 发布版本。
 
 Patch 不允许模糊匹配、自动跳过或在失败后生成半品牌化产物。每个 Patch 记录适用的上游 commit 或明确的上游版本范围；涉及壳层之外的改动需要单独设计评审。
 
@@ -234,7 +288,7 @@ QiLin 商标及 Logo 归其权利人所有
 
 ### 6.2 视觉原则
 
-“中国文化”作为设计语汇和细节层，不替代桌面效率工具的结构。界面优先保证信息层级、对比度、键盘操作、错误可读性和减少动效支持。
+“中国文化”作为共享 Web Client 的设计语汇和细节层，不替代桌面效率工具的结构。Web 浏览器和 Desktop 的工作区必须读取相同的主题 Token、字体回退、组件样式和状态颜色；Electron 启动页、原生菜单和错误恢复页只做平台外壳适配。界面优先保证信息层级、对比度、键盘操作、错误可读性和减少动效支持。
 
 建议使用：
 
@@ -312,11 +366,11 @@ QiLin Desktop · 基于 QiLin 构建
 
 #### 主工作区
 
-主工作区继续使用上游 QiLin Web Client。OpenKylin 只注入默认中文 locale、壳层主题 token、窗口标题和品牌相关空状态，不重写聊天、Session、工具和文件操作的核心交互。
+主工作区继续使用上游 QiLin Web Client。OpenKylin 的中国文化主题、默认中文 locale、品牌色和品牌相关空状态必须通过共享 Web Client 注入，Web 浏览器和 Desktop 使用完全相同的组件、CSS、路由、功能注册和可见文案。Desktop 只额外提供窗口标题和原生壳层能力，不重写聊天、Session、工具和文件操作的核心交互。
 
 #### 插件管理页
 
-保持上游列表和事务操作语义，增加品牌色表达：启用使用玉青色，更新和主要操作使用朱砂色，完成状态可用低饱和鎏金点缀。npm 包名、版本号、错误信息和依赖诊断保持技术准确。
+工作区内的插件和设置能力必须复用 Web Client 中的同一套页面、组件、主题 Token、状态和事务反馈。Desktop 原生菜单可以提供进入插件事务恢复窗口的入口，但该窗口只负责桌面 profile 的生命周期恢复，不复制 Web 的插件设置和管理页面。启用使用玉青色，更新和主要操作使用朱砂色，完成状态可用低饱和鎏金点缀；npm 包名、版本号、错误信息和依赖诊断保持技术准确。
 
 #### 更新提示
 
@@ -386,7 +440,16 @@ QiLin Agent / Plugin / Session 运行
 - Release manifest、SHA-256 和 SBOM 生成；
 - 源码、Git 元数据、构建缓存和临时路径泄漏扫描。
 
-### 9.2 桌面壳测试
+### 9.2 Web/Desktop 一致性测试
+
+- Web 浏览器端和 Desktop 端加载的 `@qilin/web-frontend/dist` 文件清单与 `webBundleSha256` 完全一致；
+- 同一组用户场景在 Web 和 Desktop 上通过：新建会话、发送消息、流式响应、Session 切换、文件选择、设置、插件/工具入口、错误提示和恢复后的重试；
+- 关键页面的组件结构、路由、可见文案和主题 Token 名称一致；平台差异只允许出现在传输适配和原生窗口能力；
+- 共享 Web 主题 Token 的任一变更同时反映在 Web 和 Desktop，禁止只修改 `apps/desktop/renderer` 使 Desktop 单独变色；
+- Desktop 不包含 Web Client 的第二份组件、CSS、路由或功能注册实现；
+- Web 与 Desktop 的构建清单记录同一 QiLin commit、Web Client 版本、主题版本和功能目录摘要。
+
+### 9.3 桌面壳测试
 
 - 启动页和错误页在无 Host 时可渲染；
 - 中文启动、菜单、更新、插件和恢复文案完整；
@@ -397,7 +460,7 @@ QiLin Agent / Plugin / Session 运行
 - 外部导航、任意窗口打开和不受控 IPC 被拒绝；
 - `qilin-app://` 路径越界和非允许方法被拒绝。
 
-### 9.3 macOS arm64 构建 Smoke Test
+### 9.4 macOS arm64 构建 Smoke Test
 
 - `pnpm run package:desktop:mac:arm64` 在受控 macOS arm64 runner 上完成；
 - 打包应用的 `desktop-runtime.json` 校验通过；
@@ -410,7 +473,7 @@ QiLin Agent / Plugin / Session 运行
 - ZIP 可被更新元数据识别；
 - 应用安装后中文 UI、Session、设置、插件和文件操作无回归。
 
-### 9.4 发布验收标准
+### 9.5 发布验收标准
 
 发布前必须全部满足：
 
@@ -419,11 +482,11 @@ QiLin Agent / Plugin / Session 运行
 3. 上游 commit、QiLin 版本、Desktop 版本、Node 版本、pnpm 版本和目标架构可追溯。
 4. 中文启动页、菜单、更新提示、错误恢复页和关于页可用。
 5. QiLin Logo 按授权规范显示，未拉伸、裁切或错误变色。
-6. 主工作区保持上游 Web Client 能力，聊天、Session、插件和文件操作不回归。
+6. Web 浏览器端与 Desktop 工作区使用同一份 Web Client 构建物，聊天、Session、插件、设置、工具、文件操作和错误反馈在两端不回归。
 7. 应用不开放监听端口，Renderer 不能访问 Node、shell 或任意文件系统。
 8. 签名 DMG 能通过 macOS 安全校验，ZIP 可用于自动更新。
 9. GitHub Release 包含 DMG、ZIP、SHA-256、SBOM 和 `release-manifest.json`。
-10. 上游升级时，Patch 不匹配会使 CI 失败，不生成未品牌化或半品牌化产物。
+10. 上游升级时，Patch 不匹配或 Web/Desktop 同步摘要不一致会使 CI 失败，不生成未品牌化、半品牌化或双端漂移的产物。
 
 ## 10. 风险和控制
 
@@ -437,6 +500,7 @@ QiLin Agent / Plugin / Session 运行
 | 新上游依赖引入供应链风险 | 依赖锁、SBOM、许可证扫描和构建证明 |
 | 文化元素降低可读性 | 对比度、键盘操作、字体回退和减少动效测试 |
 | 插件事务导致 Host 无法恢复 | 复用上游 profile 锁、显式错误页和禁用插件恢复路径 |
+| Web 与 Desktop 的功能或样式漂移 | 单一 Web 构建物、双端资源摘要、同一组场景测试和发布阻断门禁 |
 
 ## 11. 关键决策记录
 
@@ -445,3 +509,4 @@ QiLin Agent / Plugin / Session 运行
 - 选择配置注入和文件覆盖优先、最小 Patch 兜底，以降低上游升级冲突。
 - 选择 GitHub Release 保存安装包，Git 仓库保存清单，以避免二进制膨胀并保留可审计的发布历史。
 - 选择“现代桌面工具 + 中国文化细节”，而不是完整古风皮肤，以保证效率、可读性和桌面使用连续性。
+- 选择 Web Client 作为工作区唯一实现，Desktop 只复用其构建物并提供原生壳层；以资源摘要、功能目录摘要和双端同场景测试阻止后续同步漂移。
