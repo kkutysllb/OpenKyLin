@@ -169,7 +169,8 @@ Expected: FAIL（模块不存在）
 // scripts/lib/hash.mjs
 /** Deterministic hashing helpers shared by verification scripts. */
 import { createHash } from 'node:crypto'
-import { createReadStream, readdir, readFile, stat } from 'node:fs/promises'
+import { createReadStream } from 'node:fs'
+import { readdir, stat } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 
 export function sha256Text(text) {
