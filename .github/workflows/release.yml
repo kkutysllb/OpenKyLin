@@ -1,0 +1,67 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 11.7.0 }
+      - name: Product verification and upstream fetch
+        run: |
+          npm test
+          node scripts/fetch-upstream.mjs \
+            "$(node -p "JSON.parse(require('fs').readFileSync('upstream/qilin.lock.json','utf8')).qilinRepository")" \
+            "$(node -p "JSON.parse(require('fs').readFileSync('upstream/qilin.lock.json','utf8')).qilinCommit")" \
+            "$(node -p "JSON.parse(require('fs').readFileSync('upstream/qilin.lock.json','utf8')).qilinVersion")" \
+            "$RUNNER_TEMP/qilin-src"
+          node scripts/apply-branding.mjs . "$RUNNER_TEMP/qilin-src" patches/registry.json
+      - name: Build and package signed desktop
+        working-directory: ${{ runner.temp }}/qilin-src
+        env:
+          QILIN_DESKTOP_APP_ID: ${{ vars.QILIN_DESKTOP_APP_ID }}
+          QILIN_DESKTOP_MACOS_SIGNING_IDENTITY: ${{ vars.QILIN_DESKTOP_MACOS_SIGNING_IDENTITY }}
+          QILIN_DESKTOP_MACOS_TEAM_ID: ${{ vars.QILIN_DESKTOP_MACOS_TEAM_ID }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PEM: ${{ secrets.APPLE_API_KEY_PEM }}
+        run: |
+          printf '%s\n' "$APPLE_API_KEY_PEM" > "$RUNNER_TEMP/appstore.p8"
+          export APPLE_API_KEY="$RUNNER_TEMP/appstore.p8"
+          pnpm install --frozen-lockfile
+          pnpm run build
+          pnpm run package:desktop:mac:arm64
+      - name: Web/Desktop sync gate
+        run: |
+          node scripts/verify-web-desktop-sync.mjs \
+            "$RUNNER_TEMP/qilin-src/apps/web/dist" \
+            "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/qilin/node_modules/@qilin/web-frontend/dist" \
+            sync-report.json
+      - name: Verify artifacts and generate manifest
+        run: |
+          node scripts/verify-artifact.mjs \
+            "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/qilin/desktop-runtime.json" \
+            upstream/qilin.lock.json \
+            "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts" \
+            checksums-sha256.txt
+          node scripts/generate-release-manifest.mjs \
+            upstream/qilin.lock.json sync-report.json checksums-sha256.txt \
+            releases/manifest.json
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ runner.temp }}/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.dmg
+            ${{ runner.temp }}/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.zip
+            ${{ runner.temp }}/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/latest-mac.yml
+            checksums-sha256.txt
+            releases/manifest.json

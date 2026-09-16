@@ -1,0 +1,39 @@
+name: build-macos-arm64
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - name: Product tests and static verification
+        run: |
+          npm test
+          npm run verify:upstream
+          npm run verify:branding
+      - name: Fetch locked upstream
+        run: |
+          node scripts/fetch-upstream.mjs \
+            "$(node -p "JSON.parse(require('fs').readFileSync('upstream/qilin.lock.json','utf8')).qilinRepository")" \
+            "$(node -p "JSON.parse(require('fs').readFileSync('upstream/qilin.lock.json','utf8')).qilinCommit")" \
+            "$(node -p "JSON.parse(require('fs').readFileSync('upstream/qilin.lock.json','utf8')).qilinVersion")" \
+            "$RUNNER_TEMP/qilin-src"
+      - name: Apply branding
+        run: node scripts/apply-branding.mjs . "$RUNNER_TEMP/qilin-src" patches/registry.json
+      - name: Upstream web build (canonical Web Client bundle)
+        working-directory: ${{ runner.temp }}/qilin-src
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+      - name: Source leakage scan of build residue
+        run: node scripts/check-source-leakage.mjs "$RUNNER_TEMP/qilin-src/apps/web/dist"
