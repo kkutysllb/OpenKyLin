@@ -26,3 +26,19 @@ test('dirDigest 对相同内容稳定、对任一文件变化敏感', async () =
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('dirDigest exclude 命中文件被跳过；无 exclude 行为不变', async () => {
+  const a = await mkdtemp(join(tmpdir(), 'ok-hash-a-'))
+  const b = await mkdtemp(join(tmpdir(), 'ok-hash-b-'))
+  try {
+    await writeFile(join(a, 'index.js'), 'code')
+    await writeFile(join(a, 'index.js.map'), 'map')
+    await writeFile(join(b, 'index.js'), 'code')
+    const exclude = [/\.map$/]
+    assert.equal(await dirDigest(a, { exclude }), await dirDigest(b, { exclude }))
+    assert.notEqual(await dirDigest(a), await dirDigest(b))
+  } finally {
+    await rm(a, { recursive: true, force: true })
+    await rm(b, { recursive: true, force: true })
+  }
+})

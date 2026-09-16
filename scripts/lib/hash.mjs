@@ -20,15 +20,26 @@ export async function sha256File(path) {
   return hash.digest('hex')
 }
 
-/** Hash a whole directory: sorted relative paths, each with its content hash. */
-export async function dirDigest(root) {
+/**
+ * Hash a whole directory: sorted relative paths, each with its content hash.
+ * Files whose POSIX relative path matches any `exclude` pattern are omitted.
+ * Patterns must not carry the global flag: `RegExp.test` advances `lastIndex`
+ * on `/g`, which would make the digest order-dependent.
+ * @param {string} root
+ * @param {{ exclude?: readonly RegExp[] }} [options]
+ */
+export async function dirDigest(root, { exclude = [] } = {}) {
   const entries = []
   async function walk(dir) {
     for (const name of (await readdir(dir)).sort()) {
       const path = join(dir, name)
       const info = await stat(path)
       if (info.isDirectory()) await walk(path)
-      else entries.push([relative(root, path).split(sep).join('/'), await sha256File(path)])
+      else {
+        const rel = relative(root, path).split(sep).join('/')
+        if (exclude.some(pattern => pattern.test(rel))) continue
+        entries.push([rel, await sha256File(path)])
+      }
     }
   }
   await walk(root)
