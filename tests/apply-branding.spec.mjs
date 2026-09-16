@@ -54,3 +54,28 @@ test('SHA 不匹配立即失败且不写目标', async () => {
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('mode=add：目标不存在则创建，已存在则拒绝', async () => {
+  const { root, upstream, product } = await fixture()
+  const newTarget = 'apps/desktop/renderer/ok-theme.css'
+  const registry = {
+    schemaVersion: 1,
+    overwrites: [{
+      mode: 'add',
+      source: 'branding/shell/startup.css',
+      target: newTarget,
+    }],
+    patches: [],
+  }
+  try {
+    const applied = await applyBranding({ productRoot: product, upstreamRoot: upstream, registry })
+    assert.equal(applied.overwrites.length, 1)
+    assert.match(await readFile(join(upstream, newTarget), 'utf8'), /#F7F3EA/)
+    await assert.rejects(
+      applyBranding({ productRoot: product, upstreamRoot: upstream, registry }),
+      /already exists/,
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

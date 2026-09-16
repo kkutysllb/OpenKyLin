@@ -2,14 +2,14 @@
 /** Apply branding overwrites and git patches to the ephemeral upstream checkout. */
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { access, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { sha256File } from './lib/hash.mjs'
 
 const run = promisify(execFile)
 
 /**
- * @param {{ productRoot: string, upstreamRoot: string, registry: { schemaVersion: number, overwrites?: Array<{ source: string, target: string, expectSha256?: string|null }>, patches?: Array<{ patch: string }> } }} options
+ * @param {{ productRoot: string, upstreamRoot: string, registry: { schemaVersion: number, overwrites?: Array<{ mode?: 'add', source: string, target: string, expectSha256?: string|null }>, patches?: Array<{ patch: string }> } }} options
  * @returns {Promise<{ overwrites: string[], patches: string[] }>}
  */
 export async function applyBranding({ productRoot, upstreamRoot, registry }) {
@@ -17,12 +17,23 @@ export async function applyBranding({ productRoot, upstreamRoot, registry }) {
   const overwrites = []
   for (const entry of registry.overwrites ?? []) {
     const target = join(upstreamRoot, entry.target)
+    const source = join(productRoot, entry.source)
+    await mkdir(dirname(target), { recursive: true })
+    if (entry.mode === 'add') {
+      // New downstream asset: the upstream tree must not already carry it.
+      let exists = true
+      try { await access(target) } catch { exists = false }
+      if (exists) throw new Error(`branding add: ${entry.target} already exists upstream`)
+      await copyFile(source, target)
+      overwrites.push(entry.target)
+      continue
+    }
     const actual = await sha256File(target)
-    if (entry.expectSha256 && actual !== entry.expectSha256) {
+    // null/undefined skips the guard only for entries without a pinned pre-image
+    if (entry.expectSha256 != null && actual !== entry.expectSha256) {
       throw new Error(`branding overwrite: sha mismatch for ${entry.target}: expected ${entry.expectSha256}, found ${actual}`)
     }
-    await mkdir(dirname(target), { recursive: true })
-    await copyFile(join(productRoot, entry.source), target)
+    await copyFile(source, target)
     overwrites.push(entry.target)
   }
   const patches = []

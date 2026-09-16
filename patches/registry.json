@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "overwrites": [
     {
+      "mode": "add",
       "source": "branding/theme/tokens.css",
-      "target": "apps/desktop/renderer/ok-theme.css",
-      "expectSha256": null
+      "target": "apps/desktop/renderer/ok-theme.css"
     }
   ],
   "patches": [
