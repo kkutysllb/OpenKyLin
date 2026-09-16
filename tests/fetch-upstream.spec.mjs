@@ -31,8 +31,11 @@ test('fetchUpstream checkout 精确 commit 并校验版本', async () => {
     assert.equal(summary.commit, commit)
     const pkg = JSON.parse(await readFile(join(out, 'package.json'), 'utf8'))
     assert.equal(pkg.version, '3.0.0')
+    const receipt = JSON.parse(await readFile(join(out, '.openkylin-upstream.json'), 'utf8'))
+    assert.equal(receipt.commit, summary.commit)
   } finally {
     await rm(out, { recursive: true, force: true })
+    await rm(repo, { recursive: true, force: true })
   }
 })
 
@@ -46,5 +49,18 @@ test('版本不匹配时失败', async () => {
     )
   } finally {
     await rm(out, { recursive: true, force: true })
+    await rm(repo, { recursive: true, force: true })
   }
+})
+
+test('repository 以 - 开头被拒绝，坏 commit 格式被拒绝', async () => {
+  const sha = '0'.repeat(40)
+  await assert.rejects(
+    fetchUpstream({ repository: '--upload-pack=evil', commit: sha, qilinVersion: '3.0.0', out: join(tmpdir(), 'ok-rejected') }),
+    /repository must not/,
+  )
+  await assert.rejects(
+    fetchUpstream({ repository: 'https://example.invalid/repo.git', commit: 'main', qilinVersion: '3.0.0', out: join(tmpdir(), 'ok-rejected') }),
+    /commit must be a 40-char sha/,
+  )
 })

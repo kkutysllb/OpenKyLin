@@ -12,6 +12,14 @@ const run = promisify(execFile)
  * @returns {Promise<{ commit: string, qilinVersion: string, out: string }>}
  */
 export async function fetchUpstream({ repository, commit, qilinVersion, out }) {
+  // The lock schema already requires an https repository URL; these guards keep
+  // unvalidated direct callers from injecting git CLI flags or bad revs.
+  if (!repository || repository.startsWith('-')) {
+    throw new Error('fetchUpstream: repository must not be empty or start with "-"')
+  }
+  if (!/^[0-9a-f]{40}$/.test(commit)) {
+    throw new Error(`fetchUpstream: commit must be a 40-char sha, got ${JSON.stringify(commit)}`)
+  }
   await rm(out, { recursive: true, force: true })
   await run('git', ['clone', '--no-checkout', repository, out])
   await run('git', ['-C', out, 'checkout', '--detach', commit])
