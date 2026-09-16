@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "productName": "OpenKylin Desktop",
+  "displayName": "QiLin Desktop",
+  "subtitle": "基于 QiLin 构建的中文桌面智能工作台",
+  "defaultLocale": "zh-CN",
+  "logo": { "source": "branding/logo/qilin.svg", "usage": "authorized" },
+  "theme": {
+    "light": { "paper": "#F7F3EA", "ink": "#17191C", "cinnabar": "#B7352C", "jade": "#5D8275", "gold": "#B89152" },
+    "dark": { "paper": "#17191C", "ink": "#F7F3EA", "cinnabar": "#C94A40", "jade": "#83A99A", "gold": "#D0AA67" }
+  },
+  "trademarkNotice": "QiLin 商标及 Logo 归其权利人所有"
+}

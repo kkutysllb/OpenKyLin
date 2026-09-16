@@ -1,0 +1,17 @@
+/* branding/theme/tokens.css — shared Web/Desktop theme tokens (source of truth). */
+:root {
+  --ok-paper: #F7F3EA;
+  --ok-ink: #17191C;
+  --ok-cinnabar: #B7352C;
+  --ok-jade: #5D8275;
+  --ok-gold: #B89152;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ok-paper: #17191C;
+    --ok-ink: #F7F3EA;
+    --ok-cinnabar: #C94A40;
+    --ok-jade: #83A99A;
+    --ok-gold: #D0AA67;
+  }
+}
