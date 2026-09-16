@@ -82,7 +82,7 @@ Expected: FAIL（找不到 package.json 的 type/module 字段）
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
-    "test": "node --test tests/",
+    "test": "node --test 'tests/**/*.spec.mjs'",
     "verify:upstream": "node scripts/verify-upstream.mjs",
     "verify:branding": "node scripts/verify-branding.mjs",
     "fetch:upstream": "node scripts/fetch-upstream.mjs",
