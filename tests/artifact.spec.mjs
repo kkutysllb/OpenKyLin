@@ -16,6 +16,23 @@ test('泄漏扫描命中 .ts 源码与 git 元数据', () => {
   ])
 })
 
+test('泄漏扫描覆盖全部 TypeScript 源形式', () => {
+  const leaks = findLeaks([
+    'app/renderer/Chat.tsx',
+    'app/loader.mts',
+    'app/shim.cts',
+    'app/types/api.d.ts',
+    'app/lib.js',
+    'app/style.css',
+  ])
+  assert.deepEqual(leaks, [
+    'app/renderer/Chat.tsx',
+    'app/loader.mts',
+    'app/shim.cts',
+    'app/types/api.d.ts',
+  ])
+})
+
 test('产物报告校验版本绑定', () => {
   assert.throws(() => parseArtifactReport({
     runtime: { version: '3.0.0', nodeVersion: '24.17.0', pnpmVersion: '11.7.0' },

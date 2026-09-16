@@ -5,7 +5,9 @@ import { basename, join, relative, sep } from 'node:path'
 
 const LEAK_PATTERNS = [
   /(^|\/)\.git(\/|$)/,
-  /(^|\/)[^/]*\.ts$/,
+  // TypeScript sources in any module form; `.d.ts` declarations are included on purpose —
+  // the runtime payload must not carry them.
+  /(^|\/)[^/]*\.[cm]?tsx?$/,
   /(^|\/)[^/]*\.tsbuildinfo$/,
   /(^|\/)node_modules\/\.cache(\/|$)/,
   /(^|\/)\.desktop-build(\/|$)/,
