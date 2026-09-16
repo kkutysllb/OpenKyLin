@@ -14,6 +14,7 @@
     "verify:sync": "node scripts/verify-web-desktop-sync.mjs",
     "verify:artifact": "node scripts/verify-artifact.mjs",
     "check:leakage": "node scripts/check-source-leakage.mjs",
+    "sbom": "node scripts/generate-sbom.mjs",
     "release:manifest": "node scripts/generate-release-manifest.mjs"
   }
 }
