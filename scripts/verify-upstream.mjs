@@ -7,10 +7,10 @@ const SEMVER = /^\d+\.\d+\.\d+$/
 const TARGETS = new Set(['mac-arm64', 'mac-x64', 'win-x64'])
 
 export function parseUpstreamLock(value) {
-  if (typeof value !== 'object' || value === null) throw new Error('upstream lock: not an object')
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error('upstream lock: not an object')
   for (const field of ['productVersion', 'qilinVersion', 'nodeVersion', 'pnpmVersion']) {
     if (typeof value[field] !== 'string' || !SEMVER.test(value[field])) {
-      throw new Error(`upstream lock: ${field} must be semver, got ${JSON.stringify(value[field])}`)
+      throw new Error(`upstream lock: ${field} must be an exact X.Y.Z version, got ${JSON.stringify(value[field])}`)
     }
   }
   if (typeof value.qilinCommit !== 'string' || !COMMIT.test(value.qilinCommit)) {

@@ -5,7 +5,7 @@
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
-    "test": "node --test 'tests/**/*.spec.mjs'",
+    "test": "node --test \"tests/**/*.spec.mjs\"",
     "verify:upstream": "node scripts/verify-upstream.mjs",
     "verify:branding": "node scripts/verify-branding.mjs",
     "fetch:upstream": "node scripts/fetch-upstream.mjs",

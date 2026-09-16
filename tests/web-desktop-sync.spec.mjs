@@ -1,7 +1,7 @@
 // tests/web-desktop-sync.spec.mjs
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile, mkdir, rm, readFile } from 'node:fs/promises'
+import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { compareWebDesktop, DEFAULT_BUNDLE_EXCLUDE } from '../scripts/verify-web-desktop-sync.mjs'

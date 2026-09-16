@@ -14,3 +14,8 @@ test('拒绝坏 commit 与坏 target', () => {
   assert.throws(() => parseUpstreamLock({ ...lock, target: 'linux-x64' }), /target/)
   assert.throws(() => parseUpstreamLock({ ...lock, schemaVersion: 2 }), /schemaVersion/)
 })
+
+test('数组输入与版本措辞守卫', () => {
+  assert.throws(() => parseUpstreamLock([lock]), /not an object/)
+  assert.throws(() => parseUpstreamLock({ ...lock, qilinVersion: '3.0.0-beta.1' }), /exact X\.Y\.Z version/)
+})

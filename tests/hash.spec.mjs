@@ -53,3 +53,20 @@ test('dirDigest 拒绝带 /g 标志的 exclude 模式（lastIndex 陷阱）', as
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('dirDigest 条目按相对路径全局排序（而非逐目录 DFS）', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ok-hash-order-'))
+  try {
+    // 交错布局：DFS 顺序为 [a/z.txt, a.txt]，全局排序为 [a.txt, a/z.txt]。
+    await mkdir(join(root, 'a'), { recursive: true })
+    await writeFile(join(root, 'a', 'z.txt'), 'Z')
+    await writeFile(join(root, 'a.txt'), 'A')
+    const expected = await sha256Text([
+      ['a.txt', await sha256File(join(root, 'a.txt'))],
+      ['a/z.txt', await sha256File(join(root, 'a', 'z.txt'))],
+    ].map(([p, h]) => `${p}\0${h}`).join('\n'))
+    assert.equal(await dirDigest(root), expected)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

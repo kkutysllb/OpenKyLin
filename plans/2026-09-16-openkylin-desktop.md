@@ -1,5 +1,7 @@
 # OpenKylin 桌面端实施计划
 
+> 状态：已由实现取代；APPLE_API_KEY_PATH 等细节以 workflows 现状为准。
+
 **Goal:** 在 OpenKylin 仓库建立"上游临时构建 + 共享 Web 品牌主题 + macOS arm64 Desktop 发布"的完整产品化控制面，所有脚本零外部依赖、全部可测试。
 
 **Architecture:** 仓库只保存产品控制面（上游版本锁、品牌资产、补丁注册、构建编排、验证脚本）。CI 在临时目录拉取精确 QiLin commit，先构建唯一 `@qilin/web-frontend/dist`，同一构建物供 Web 与 Desktop 共用，通过摘要比对强制双端同步，最后打包签名并发布到 GitHub Release。

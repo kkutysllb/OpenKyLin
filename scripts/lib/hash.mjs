@@ -46,5 +46,6 @@ export async function dirDigest(root, { exclude = [] } = {}) {
     }
   }
   await walk(root)
+  entries.sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
   return sha256Text(entries.map(([p, h]) => `${p}\0${h}`).join('\n'))
 }
