@@ -24,6 +24,9 @@ const HERE = import.meta.dirname
 /** 桌面壳自有页面（启动页）的 preload 绝对路径。 */
 const SPLASH_PRELOAD = join(HERE, '../preload/splash.mjs')
 
+/** shell 窗口的标题栏桥 preload（CJS：沙箱 preload 不走 ESM）。 */
+const SHELL_PRELOAD = join(HERE, '../preload/shell.cjs')
+
 /** 启动页 HTML 的本地 URL。 */
 const SPLASH_URL = pathToFileURL(join(HERE, '../renderer/splash.html')).href
 
@@ -56,6 +59,7 @@ export function showSplash() {
     resizable: false,
     show: false,
     autoHideMenuBar: true,
+    frame: false,
     backgroundColor: splashBackgroundColor(),
     webPreferences: {
       preload: SPLASH_PRELOAD,
@@ -101,25 +105,40 @@ export function showShellWindow(qilinUrl) {
       show: false,
       title: 'QiLin Desktop',
       backgroundColor: splashBackgroundColor(),
-      // KCoder 式自绘标题栏（macOS）：隐藏原生标题栏、保留红绿灯并把它
-      // 垂直居中到自绘拖拽带里；拖拽带与标题文字由 titlebar.mjs 注入。
+      // 无边框桌面（KCoder 同款观感）：整窗无原生边框与标题栏，红绿灯
+      // 以悬浮按钮回归并垂直居中在自绘拖拽带里；拖拽带、标题与面板
+      // 按钮由 titlebar.mjs 注入绘制。
+      frame: false,
       ...(process.platform === 'darwin'
         ? {
-            titleBarStyle: 'hidden',
+            // y 为实测校准值：Electron 把该值视作按钮组垂直中心（配置 18
+            // 实测中心 ≈17.75），取栏高一半让红绿灯与标题文字共享 24px
+            // 光学中线
             trafficLightPosition: {
               x: 12,
-              y: Math.max(6, Math.round((TITLEBAR_HEIGHT - 12) / 2)),
+              y: Math.round(TITLEBAR_HEIGHT / 2),
             },
           }
         : {}),
-      // 纯浏览器载体：无 node、无 preload、sandbox、webSecurity 开启
-      // （唯一注入是 titlebar.mjs 的呈现层标题栏）
+      // 纯浏览器载体：无 node、仅标题栏白名单桥、sandbox、webSecurity
+      // 开启（唯一注入是 titlebar.mjs 的呈现层标题栏）
       webPreferences: {
+        preload: SHELL_PRELOAD,
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: true,
       },
     })
+    // frameless 的 macOS 窗口默认不带红绿灯：显式召回，位置走
+    // trafficLightPosition（老版本 Electron 无此 API 时跳过——红绿灯
+    // 缺失只影响关停/缩放按钮，不阻塞窗口）。
+    if (process.platform === 'darwin' && typeof shellWindow.setWindowButtonVisibility === 'function') {
+      try {
+        shellWindow.setWindowButtonVisibility(true)
+      } catch (error) {
+        console.warn('[windows] setWindowButtonVisibility failed:', error)
+      }
+    }
     attachTitlebar(shellWindow)
     shellWindow.once('ready-to-show', () => {
       shellWindow?.maximize()

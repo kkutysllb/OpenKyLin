@@ -1,0 +1,28 @@
+diff --git a/packages/client/ui-settings-general/src/client/SettingsRoot.module.css b/packages/client/ui-settings-general/src/client/SettingsRoot.module.css
+--- a/packages/client/ui-settings-general/src/client/SettingsRoot.module.css
++++ b/packages/client/ui-settings-general/src/client/SettingsRoot.module.css
+@@ -11,8 +11,10 @@
+ /* Full-viewport layer (figma Mask 501:29946 #000@24%): mask tokens match the
+    Modal primitive (--dsw-alias-bg-mask-1 + --dsw-mask-blur). */
+ .overlay {
+   position: fixed;
+   inset: 0;
++  /* OpenKylin 桌面壳自绘标题栏让位：--ok-tb-h 由壳注入，纯 web 无此变量回落 0 */
++  top: var(--ok-tb-h, 0px);
+   z-index: 1000;
+   display: flex;
+ }
+diff --git a/apps/web/src/landing/landing.css b/apps/web/src/landing/landing.css
+index bd75fda963..43de2dee81 100644
+--- a/apps/web/src/landing/landing.css
++++ b/apps/web/src/landing/landing.css
+@@ -117,7 +117,8 @@ body {
+ 
+ .site-header {
+   position: fixed;
+-  top: 0;
++  /* OpenKylin 桌面壳自绘标题栏让位：--ok-tb-h 由壳注入，纯 web 无此变量回落 0 */
++  top: var(--ok-tb-h, 0px);
+   right: 0;
+   left: 0;
+   z-index: 20;

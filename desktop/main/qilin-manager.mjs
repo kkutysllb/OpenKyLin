@@ -2,12 +2,13 @@
 /**
  * QiLin web 侧车进程管理器（KCoder host & sidecar 机制）。
  *
- * 职责：spawn `qilin web --port 0 --no-open` → 从 stdout 解析就绪行
+ * 职责：spawn `qilin web --port <稳定端口> --no-open` → 从 stdout 解析就绪行
  * （含 launch token 的完整 URL）→ 广播状态；崩溃自动重启（指数退避，
  * 上限见 {@link MAX_AUTO_RESTARTS}）；应用退出时优雅关闭
  * （SIGTERM → 宽限 → SIGKILL），绝不留孤儿进程。
  *
- * `--port 0` 由 OS 分配端口，不与用户自起的 `qilin web` 冲突；`--no-open`
+ * 端口优先复用 QILIN_HOME 的记忆端口（登录 cookie 绑定 host:port，端口
+ * 稳定 = 凭证跨启动存活），占用则向 OS 要新口并重记；`--no-open`
  * 抑制默认浏览器——桌面壳的 shell 窗口就是它的浏览器。
  *
  * @module desktop/main/qilin-manager
@@ -15,14 +16,51 @@
 
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import net from 'node:net'
 import {
   LOG_RING_SIZE,
   MAX_AUTO_RESTARTS,
   READY_TIMEOUT_MS,
   TERM_GRACE_MS,
   parseReadyLine,
+  qilinHome,
+  readPersistedPort,
   resolveSidecar,
+  persistPort,
 } from './qilin-contract.mjs'
+
+/**
+ * 探测 127.0.0.1 上某端口是否已被占用。
+ * @param {number} port
+ * @returns {Promise<boolean>}
+ */
+function isPortBusy(port) {
+  return new Promise((resolve) => {
+    const socket = net.connect({ port, host: '127.0.0.1' })
+    const done = (busy) => {
+      socket.destroy()
+      resolve(busy)
+    }
+    socket.once('connect', () => done(true))
+    socket.once('error', () => done(false))
+  })
+}
+
+/**
+ * 向 OS 要一个空闲回环端口（listen(0) 后立刻释放；存在 TOCTOU 窗口，
+ * 由侧车绑定失败的退出-重启路径兜底）。
+ * @returns {Promise<number>}
+ */
+function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address()
+      server.close(() => resolve(port))
+    })
+  })
+}
 
 /**
  * @typedef {'stopped' | 'starting' | 'ready' | 'restarting' | 'failed'} QilinState
@@ -72,7 +110,8 @@ export class QilinManager extends EventEmitter {
 
   /**
    * 启动（或在新运行树可用后再次尝试启动）qilin 侧车。
-   * 已在运行时是幂等的 no-op。
+   * 已在运行时是幂等的 no-op。端口选择是异步的（探记忆端口占用），
+   * spawn 在 #launch 中进行；starting 状态同步置位，并发调用安全。
    *
    * @param {{ runRoot?: string }} [options] - 品牌化运行树（dev 态为 .tmp/dev/qilin-src）。
    * @returns {QilinStatus}
@@ -82,17 +121,41 @@ export class QilinManager extends EventEmitter {
       return this.status
     }
     this.#options = options
-    const command = resolveSidecar({ runRoot: options.runRoot })
+    this.#stopping = false
+    // 先置 starting 再异步选口：双击/重试并发下第二次调用被状态闸拦下
+    this.#setValues({ state: 'starting', error: null })
+    void this.#launch(options)
+    return this.status
+  }
+
+  /**
+   * 选侧车端口：优先复用记忆端口（空闲时）；否则向 OS 要新口并重记。
+   * 登录会话 cookie 绑定 host:port，端口稳定 = 凭证跨启动存活。
+   * @returns {Promise<number>}
+   */
+  async #pickPort() {
+    const home = qilinHome()
+    const persisted = readPersistedPort(home)
+    if (persisted !== null && !(await isPortBusy(persisted))) return persisted
+    const port = await findFreePort()
+    persistPort(port, home)
+    return port
+  }
+
+  /** 解析命令 → 选口 → spawn（start 的异步主体）。 */
+  async #launch(options) {
+    const port = await this.#pickPort()
+    // 选口期间用户已停止（启动页关闭等）：放弃 spawn
+    if (this.#stopping || this.#state === 'stopped') return
+    const command = resolveSidecar({ runRoot: options.runRoot, port })
     if (command === null) {
       this.#fail(
         `未找到可用的 qilin 运行树：${options.runRoot ?? '(未指定)'} 下没有 apps/cli/lib/bin.js。`
         + ' 请先运行 npm run dev 准备品牌化运行树，或设置 QILIN_BIN。',
       )
-      return this.status
+      return
     }
-    this.#stopping = false
     this.#source = command.source
-    this.#setValues({ state: 'starting', error: null })
 
     const args = [...command.baseArgs]
     this.#appendLog('stdout', `$ ${command.describe}`)
@@ -148,7 +211,6 @@ export class QilinManager extends EventEmitter {
         void this.stop()
       }
     }, READY_TIMEOUT_MS)
-    return this.status
   }
 
   /** 重启：优雅停止后重新启动。@returns {QilinStatus} */

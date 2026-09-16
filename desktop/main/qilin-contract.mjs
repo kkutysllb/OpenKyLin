@@ -27,12 +27,16 @@
  *   层）插入浏览器模块清单，这就是"与上游 QiLin 产品 web 端完全一致"的
  *   上游原生开关；`qilin web` 是 **unbranded** web 面（鲸鱼兜底，无品牌
  *   层）。launcher  flags 之后的 token 全部直通 booted app
- *   （allowUnknownOption + passThroughOptions），因此 `--port 0 --no-open`
- *   直接跟在裸命令后：`--port 0` 让 OS 分配端口，`--no-open` 抑制默认
- *   浏览器（桌面壳就是它的浏览器）。
+ *   （allowUnknownOption + passThroughOptions），因此 `--port <N> --no-open`
+ *   直接跟在裸命令后：`--port` 为稳定记忆端口（见「端口」条目），`--no-open`
+ *   抑制默认浏览器（桌面壳就是它的浏览器）。
  * - 构建产物 bin：apps/cli/package.json `bin.qilin = lib/bin.js`。
  * - Harness home：packages/util/home-paths `QILIN_HOME`，默认 `~/.qilin`，
  *   与 qilin CLI / 浏览器端共享同一份数据（会话、凭据、插件）。
+ * - 端口：优先复用 QILIN_HOME 内记忆的稳定端口（desktop-sidecar-port.json，
+ *   占用则换新口并重记）。登录会话 cookie 绑定 host:port，随机端口会
+ *   让凭证每次启动失效；稳定端口让 shell 打开 `/workspace?token=…` 时
+ *   凭证未过期即直达工作区。
  * - Electron 二进制：品牌化 checkout 的 apps/desktop devDependencies
  *   （dev 态借用，与上游同版本；打包态由发行链自带）。
  *
@@ -42,6 +46,7 @@
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 
 /** 就绪行的解析规则：`qilin: http://127.0.0.1:<port>…`（产品 profile）或 `qilin web: …`（unbranded web profile）。 */
 export const READY_LINE_RE = /^qilin(?: web)?: (http:\/\/127\.0\.0\.1:\d+(?:\/[^\s]*)?)/
@@ -60,6 +65,43 @@ export const LOG_RING_SIZE = 500
 
 /** 上游 web profile 名称（unbranded 面；产品面为裸 `qilin`）。 */
 export const WEB_PROFILE = 'web'
+
+/** 桌面侧车端口记忆文件名（QILIN_HOME 内）。 */
+export const SIDECAR_PORT_FILE = 'desktop-sidecar-port.json'
+
+/**
+ * 读侧车端口记忆。
+ *
+ * 端口必须稳定的原因：上游登录会话 cookie 的名字与载荷都绑定请求
+ * authority（host:port，packages/identity/accounts-local/src/session.ts
+ * cookieName/read）。`--port 0` 的随机端口每次启动都变，旧 cookie 成
+ * 孤儿，用户每次打开都要重新登录；固定端口让凭证跨启动存活，shell
+ * 加载 `/workspace?token=…` 时凭证未过期即直达工作区。
+ *
+ * @param {string} [home] - QiLin home（默认 qilinHome()）。
+ * @returns {number | null} 记忆的端口；无记忆或非法返回 null。
+ */
+export function readPersistedPort(home = qilinHome()) {
+  try {
+    const raw = JSON.parse(readFileSync(join(home, SIDECAR_PORT_FILE), 'utf8'))
+    const port = Number(raw?.port)
+    return Number.isInteger(port) && port >= 1024 && port <= 65535 ? port : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 写侧车端口记忆（失败不阻塞启动——端口记忆只是优化，不是状态）。
+ * @param {number} port - 要记忆的端口。
+ * @param {string} [home] - QiLin home（默认 qilinHome()）。
+ */
+export function persistPort(port, home = qilinHome()) {
+  try {
+    mkdirSync(home, { recursive: true })
+    writeFileSync(join(home, SIDECAR_PORT_FILE), `${JSON.stringify({ port })}\n`)
+  } catch { /* 私有只读 home 等：下次启动重新选口 */ }
+}
 
 /** 品牌化上游 checkout 内的 CLI bin（相对 checkout 根）。 */
 export const UPSTREAM_BIN = join('apps', 'cli', 'lib', 'bin.js')
@@ -115,15 +157,19 @@ export function isAllowedNavigation(url, allowedOrigin) {
 }
 
 /**
- * 侧车进程的完整参数（裸 `qilin` = 产品面 profile，麒麟印章品牌层与
+ * 侧车进程的完整参数（裸 `qilin` = 产品面 profile，麒麟印章品牌位与
  * 宣纸/墨色主题层随 web-brand bundle 生效；`--expose-internals` 供 web
  * profile 的 HMR 服务使用 node internal ESM loader，生产侧车带上无害）。
  *
+ * 端口由调用方传入（优先稳定记忆端口，见 readPersistedPort）：登录
+ * 会话 cookie 绑定 host:port，端口漂移 = 每次启动都要重新登录。
+ *
  * @param {string} binPath - 品牌化 checkout 内 apps/cli/lib/bin.js 的绝对路径。
+ * @param {number} [port] - 侧车监听端口（0 = OS 分配）。
  * @returns {string[]} 解释器参数 + CLI flags。
  */
-export function sidecarArgs(binPath) {
-  return ['--expose-internals', binPath, '--port', '0', '--no-open']
+export function sidecarArgs(binPath, port = 0) {
+  return ['--expose-internals', binPath, '--port', String(port), '--no-open']
 }
 
 /**
@@ -134,13 +180,14 @@ export function sidecarArgs(binPath) {
  * 2. `OPENKYLIN_QILIN_RUN` 指向的品牌化运行树（dev 态为
  *    `.tmp/dev/qilin-src`；其 apps/cli/lib/bin.js 已构建）
  *
- * @param {{ runRoot?: string, env?: NodeJS.ProcessEnv }} options
+ * @param {{ runRoot?: string, env?: NodeJS.ProcessEnv, port?: number }} options
  * @returns {{ source: string, command: string, baseArgs: string[], cwd: string, env: NodeJS.ProcessEnv, describe: string } | null}
  *   找不到可用来源时返回 null。
  */
 export function resolveSidecar(options = {}) {
   const env = options.env ?? process.env
-  // 1) 显式环境变量：支持 "qilin" 或 "node /path/bin.js"
+  // 1) 显式环境变量：支持 "qilin" 或 "node /path/bin.js"（端口自管，
+  //    不代传稳定端口）
   const envBin = env.QILIN_BIN
   if (envBin !== undefined && envBin !== '') {
     const parts = envBin.split(/\s+/)
@@ -157,13 +204,14 @@ export function resolveSidecar(options = {}) {
   if (options.runRoot !== undefined) {
     const bin = join(options.runRoot, UPSTREAM_BIN)
     if (existsSync(bin)) {
+      const port = options.port ?? 0
       return {
         source: 'runtime',
         command: 'node',
-        baseArgs: sidecarArgs(bin),
+        baseArgs: sidecarArgs(bin, port),
         cwd: options.runRoot,
         env: {},
-        describe: `node ${bin} --port 0 --no-open（产品面）`,
+        describe: `node ${bin} --port ${String(port)} --no-open（产品面）`,
       }
     }
   }

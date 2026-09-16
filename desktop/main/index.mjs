@@ -12,12 +12,13 @@
  * @module desktop/main
  */
 
-import { clipboard, ipcMain, app } from 'electron'
+import { clipboard, ipcMain, app, shell } from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { qilinHome } from './qilin-contract.mjs'
 import { qilinManager } from './qilin-manager.mjs'
-import { closeSplash, showShellWindow, showSplash } from './windows.mjs'
+import { createWorkspaceResolver } from './workspace.mjs'
+import { closeSplash, getShellWindow, showShellWindow, showSplash } from './windows.mjs'
 
 /** 产品仓库根（desktop/main 的上上级）。 */
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
@@ -58,6 +59,23 @@ ipcMain.handle('splash:copy', () => {
   const text = diagnosticsText()
   clipboard.writeText(text)
   return text
+})
+
+/* ---------- 标题栏 IPC：工作区解析 + Finder 打开（白名单桥） ---------- */
+
+// 解析"当前会话 → 本地目录"：读自家 QILIN_HOME 的会话投影缓存（明文
+// JSON，含 cwd 与标题），按窗口标题/页面提示定位当前会话——零网络通路。
+const workspaceResolver = createWorkspaceResolver(() => ({
+  home: qilinHome(),
+  getTitle: () => getShellWindow()?.webContents.getTitle() ?? '',
+}))
+
+ipcMain.handle('ok:workspace', (_event, hint) => workspaceResolver.workspace(hint))
+ipcMain.handle('ok:workspace:reveal', async (_event, hint) => {
+  const workspace = await workspaceResolver.workspace(hint)
+  if (workspace === null) return { ok: false, reason: 'no-workspace' }
+  const error = await shell.openPath(workspace.path)
+  return error === '' ? { ok: true } : { ok: false, reason: error }
 })
 
 /* ---------- 单实例：第二次启动只聚焦现有窗口 ---------- */

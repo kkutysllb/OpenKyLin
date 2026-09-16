@@ -46,7 +46,10 @@
       font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
       -webkit-font-smoothing: antialiased;
       user-select: none;
+      /* 无边框窗口：整页即拖拽区，按钮另立 no-drag */
+      -webkit-app-region: drag;
     }
+    button, .error-text { -webkit-app-region: no-drag; }
     main {
       width: min(420px, 86vw);
       text-align: center;

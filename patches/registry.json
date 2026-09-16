@@ -9,6 +9,7 @@
   ],
   "patches": [
     { "patch": "patches/shared-web-branding.patch", "scope": "packages/client" },
+    { "patch": "patches/desktop-titlebar-inset.patch", "scope": "packages/client" },
     { "patch": "patches/desktop-locale.patch", "scope": "apps/desktop" },
     { "patch": "patches/desktop-branding.patch", "scope": "apps/desktop" }
   ]

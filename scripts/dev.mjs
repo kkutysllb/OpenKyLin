@@ -10,7 +10,7 @@
  *   2. make sure the sidecar build artifacts exist (apps/cli/lib/bin.js +
  *      apps/web/dist) and the borrowable Electron binary, building them via
  *      the upstream toolchain when missing;
- *   3. spawn the OpenKylin desktop shell, which starts `qilin web --port 0`
+ *   3. spawn the OpenKylin desktop shell, which starts `qilin web` on a stable persisted port
  *      as a sidecar and loads it in the shell window — the exact same web
  *      build the upstream browser UI serves.
  *
@@ -24,6 +24,8 @@ import { fileURLToPath } from 'node:url'
 import { fetchUpstream } from './fetch-upstream.mjs'
 import { applyBranding } from './apply-branding.mjs'
 import { DEV_STAMP_FILE, brandingFingerprint, checkoutReusable } from './lib/dev-stamp.mjs'
+import { ensureBuiltinTerminal } from './lib/terminal-builtin.mjs'
+import { qilinHome } from '../desktop/main/qilin-contract.mjs'
 
 const repoRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const lock = JSON.parse(readFileSync(join(repoRoot, 'upstream/qilin.lock.json'), 'utf8'))
@@ -113,7 +115,11 @@ if (!existsSync(join(cloneRoot, UPSTREAM_ELECTRON)) || !electronDistReady) {
   }
 }
 
-// 3. Run the OpenKylin desktop shell: it spawns `qilin web --port 0` from the
+// 3. Materialize the built-in terminal plugin into the QiLin profile
+//    (idempotent; never blocks launch — see scripts/lib/terminal-builtin.mjs).
+ensureBuiltinTerminal({ repoRoot, home: qilinHome(), log: (line) => console.log(line) })
+
+// 4. Run the OpenKylin desktop shell: it spawns `qilin web` (stable persisted port) from the
 //    branded checkout and loads the very same web UI the upstream browser
 //    serves (complete web/desktop parity by construction).
 //    OPENKYLIN_ELECTRON_NO_GPU=1 appends --disable-gpu for headless/CPU-only
