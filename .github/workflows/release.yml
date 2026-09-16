@@ -39,9 +39,7 @@ jobs:
         run: |
           printf '%s\n' "$APPLE_API_KEY_PEM" > "$RUNNER_TEMP/appstore.p8"
           export APPLE_API_KEY="$RUNNER_TEMP/appstore.p8"
-          pnpm install --frozen-lockfile
-          pnpm run build
-          pnpm run package:desktop:mac:arm64
+          node "$GITHUB_WORKSPACE/scripts/build-desktop.mjs" mac-arm64
       - name: Source leakage scan of desktop runtime payload
         run: node scripts/check-source-leakage.mjs "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/qilin"
       - name: Web/Desktop sync gate
@@ -50,6 +48,13 @@ jobs:
             "$RUNNER_TEMP/qilin-src/apps/web/dist" \
             "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/qilin/node_modules/@qilin/web-frontend/dist" \
             sync-report.json
+      - name: Generate SBOM
+        run: |
+          node scripts/generate-sbom.mjs \
+            "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/qilin" \
+            upstream/qilin.lock.json \
+            "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/sbom.spdx.json" \
+            --versions "$RUNNER_TEMP/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/runtime/versions.json"
       - name: Verify artifacts and generate manifest
         run: |
           node scripts/verify-artifact.mjs \
@@ -68,5 +73,6 @@ jobs:
             ${{ runner.temp }}/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.zip
             ${{ runner.temp }}/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/*.blockmap
             ${{ runner.temp }}/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/latest-mac.yml
+            ${{ runner.temp }}/qilin-src/apps/desktop/.desktop-build/targets/mac-arm64/artifacts/sbom.spdx.json
             checksums-sha256.txt
             releases/manifest.json

@@ -32,9 +32,7 @@ jobs:
         run: node scripts/apply-branding.mjs . "$RUNNER_TEMP/qilin-src" patches/registry.json
       - name: Upstream web build (canonical Web Client bundle)
         working-directory: ${{ runner.temp }}/qilin-src
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run build
+        run: node "$GITHUB_WORKSPACE/scripts/build-desktop.mjs" mac-arm64 --stage=build
       - name: Desktop payload parity (web-frontend tarball vs web dist)
         working-directory: ${{ runner.temp }}/qilin-src
         run: |
