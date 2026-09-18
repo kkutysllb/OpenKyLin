@@ -1,12 +1,24 @@
-diff --git a/apps/desktop/renderer/startup.html b/apps/desktop/renderer/startup.html
-index 098efb4f92..6e2e4ea9f4 100644
---- a/apps/desktop/renderer/startup.html
-+++ b/apps/desktop/renderer/startup.html
+diff --git a/apps/desktop/renderer/mandatory-update.html b/apps/desktop/renderer/mandatory-update.html
+index c0c4a28513..14ee7a7b0e 100644
+--- a/apps/desktop/renderer/mandatory-update.html
++++ b/apps/desktop/renderer/mandatory-update.html
 @@ -6,6 +6,7 @@
-     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self' data:">
-     <title id="page-title"></title>
-     <link rel="stylesheet" href="startup.css">
+     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'none'">
+     <title></title>
+     <link rel="stylesheet" href="update-dialog.css">
++    <link rel="stylesheet" href="ok-theme.css">
+     <link rel="stylesheet" href="mandatory-update.css">
+   </head>
+   <body>
+diff --git a/apps/desktop/renderer/update-dialog.html b/apps/desktop/renderer/update-dialog.html
+index 176a0dcf12..1e600342c2 100644
+--- a/apps/desktop/renderer/update-dialog.html
++++ b/apps/desktop/renderer/update-dialog.html
+@@ -6,6 +6,7 @@
+     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self'">
+     <title></title>
+     <link rel="stylesheet" href="update-dialog.css">
 +    <link rel="stylesheet" href="ok-theme.css">
    </head>
    <body>
-     <main aria-busy="true">
+     <main id="dialog" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="title" aria-describedby="detail" hidden>

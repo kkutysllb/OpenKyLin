@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "productVersion": "0.1.0",
   "qilinRepository": "https://github.com/deepseek-ai/deepseek-harness.git",
-  "qilinCommit": "411f75813ae310a4bdcb5727663a1fe94a9ec276",
+  "qilinCommit": "aff059480d2de562d23ff37976c95d2df06b32c9",
   "qilinVersion": "3.0.0",
   "nodeVersion": "24.17.0",
   "pnpmVersion": "11.7.0",
