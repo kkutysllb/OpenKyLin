@@ -7,6 +7,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { access, mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readFile } from 'node:fs/promises'
@@ -264,6 +265,7 @@ test('vendored dsh-terminal 是合法的 dsh bundle 层', async () => {
   const manifest = JSON.parse(await readFile(new URL('../vendor/dsh-terminal/package.json', import.meta.url), 'utf8'))
   assert.equal(manifest.name, TERMINAL_PACKAGE)
   assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', '上游 dsh 兼容层读取的 bundle 声明')
+  assert.equal(manifest.qilin?.bundle?.patch, './cordis.patch.yml', 'QiLin 插件管理器只认的原生 bundle 键（缺失即"没有声明组合包"）')
   assert.equal(manifest.exports?.['./client'], './client.js', 'client 交付物（xterm.js 面板）')
   await assert.doesNotReject(access(new URL('../vendor/dsh-terminal/entry.js', import.meta.url)), undefined, 'entry.js')
   await assert.doesNotReject(access(new URL('../vendor/dsh-terminal/vendor/xterm.js', import.meta.url)), undefined, 'xterm vendor')
@@ -273,25 +275,30 @@ test('vendored dsh-terminal 是合法的 dsh bundle 层', async () => {
   assert.match(client, /ResizeObserver\(readRightPanel\)/, '右栏开合/拖宽驱动面板重排（不侵占右侧栏下方区域）')
 })
 
-test('内置终端物化：进 profile 安装锚 + 注册 bundle 层（幂等，pty 缺失不阻塞）', async () => {
+test('内置终端物化：进 profile 私有安装锚 + 注册 bundle 层（幂等，pty 缺失不阻塞）', async () => {
   const repoRoot = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
   const home = await mkdtemp(join(tmpdir(), 'ok-terminal-home-'))
   const previousEnv = process.env.OPENKYLIN_NO_BUILTIN_TERMINAL
   delete process.env.OPENKYLIN_NO_BUILTIN_TERMINAL
   try {
-    // 预置可解析的假 node-pty 探针：测试环境不真装 native 包
+    // 预置可解析的假 node-pty 探针（共享锚）：测试环境不真装 native 包；
+    // 共享锚副本经 ancestor 解析可达，同样应让 pty 探测通过
     const fakePty = join(home, 'profiles', 'node_modules', 'node-pty')
     await mkdir(fakePty, { recursive: true })
     await writeFile(join(fakePty, 'package.json'), JSON.stringify({ name: 'node-pty', main: 'index.js' }))
     await writeFile(join(fakePty, 'index.js'), 'module.exports = {}\n')
+    // 预置 alpha.2 前的旧共享锚布局：物化时应清走，避免双副本
+    const legacy = join(home, 'profiles', 'node_modules', '@kkutysllb', 'dsh-terminal')
+    await mkdir(legacy, { recursive: true })
 
     const first = ensureBuiltinTerminal({ repoRoot, home })
     assert.equal(first.installed, true, '物化成功')
     assert.equal(first.pty, true, '探针在 → 不触发 npm')
 
-    const destination = join(home, 'profiles', 'node_modules', '@kkutysllb', 'dsh-terminal')
+    const destination = join(home, 'profiles', 'qilin', 'node_modules', '@kkutysllb', 'dsh-terminal')
     const copied = JSON.parse(await readFile(join(destination, 'package.json'), 'utf8'))
-    assert.equal(copied.name, TERMINAL_PACKAGE, '包已拷贝到 profile 安装锚')
+    assert.equal(copied.name, TERMINAL_PACKAGE, '包已拷贝到 profile 私有安装锚（runtime+enforce 解析可达）')
+    assert.equal(existsSync(legacy), false, '旧共享锚副本被清理（enforce 禁区不留死层包）')
 
     const manifest = JSON.parse(await readFile(join(home, 'profiles', 'qilin', 'package.json'), 'utf8'))
     assert.deepEqual(

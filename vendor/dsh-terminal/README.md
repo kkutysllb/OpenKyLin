@@ -4,6 +4,17 @@
 
 自 KCoder 内置包独立发布的 dsh 插件（v1.0.0 起独立版本线）。
 
+## QiLin 双通道适配（v1.1.0 起）
+
+manifest 同时声明 `qilin` 与 `dsh` 两个通道的 `bundle.patch` / `client`：
+QiLin 3.0.2+（dsh alpha.2 合并后）的插件管理器只认原生键
+`qilin.bundle.patch`（否则报"没有声明组合包"），而 DSH 宿主仍读 `dsh.*`；
+两通道指向同一份 `cordis.patch.yml` 与 client 交付物，行为完全一致。
+运行时注意：QiLin 新的 profile 解析（runtime + enforce）把共享
+`$QILIN_HOME/profiles/node_modules` 划为安装保留区，插件本体须物化到
+**profile 私有 `profiles/<name>/node_modules`**（原生解析第一跳）才能被
+裸包名导入——OpenKylin 桌面端的内置物化脚本已按此布局安装。
+
 ## 真实终端语义（模式平移自 dsh-coding-sidebar 的 pty-deps / pty-manager）
 
 - **内核级伪终端**：node-pty `spawn`（macOS/Linux 走 forkpty，Windows 走
